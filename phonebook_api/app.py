@@ -1,9 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import re
 
 app = Flask(__name__)
+@app.route('/')
+def index():
+    return render_template('index.html')
 client = MongoClient("mongodb://localhost:27017/")
 db = client["phonebook"]
 contacts_collection = db["Person"]
@@ -32,7 +35,7 @@ def add_contact():
         contacts_collection.insert_one(contact)
         return jsonify({"message": "Contact added successfully!"}), 201
     else:
-        return jsonify({"message": "Invalid phone number. It should be 10 digits."}), 400
+        return jsonify({"message": "Invalid phone number. It should be 11 digits."}), 400
 
 @app.route('/contacts', methods=['GET'])
 def get_contacts():
@@ -56,7 +59,7 @@ def update_contact(contact_id):
     if phone_number and validate_phone_number(phone_number):
         update_fields["phone_number"] = phone_number
     elif phone_number:
-        return jsonify({"message": "Invalid phone number. It should be 10 digits."}), 400
+        return jsonify({"message": "Invalid phone number. It should be 11 digits."}), 400
     
     contacts_collection.update_one({"_id": ObjectId(contact_id)}, {"$set": update_fields})
     return jsonify({"message": "Contact updated successfully!"}), 200
