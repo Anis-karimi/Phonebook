@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phonebook</title>
+</head>
+<body>
+    <h1>Phonebook</h1>
+    
+    {% if role == 'admin' %}
+    <!-- Admin functionalities -->
+    <h2>Admin Panel</h2>
+    <!-- Form for adding a new contact -->
+    <h2>Add New Contact</h2>
+    <form id="addContactForm">
+        <label for="firstName">First Name:</label>
+        <input type="text" id="firstName" name="first_name" required><br><br>
+        
+        <label for="lastName">Last Name:</label>
+        <input type="text" id="lastName" name="last_name" required><br><br>
+        
+        <label for="phoneNumber">Phone Number:</label>
+        <input type="text" id="phoneNumber" name="phone_number" required pattern="[0-9]{11}" title="Phone number must be 11 digits"><br><br>
+        
+        <button type="submit">Add Contact</button>
+    </form>
+
+    <hr>
+    {% endif %}
+    
+    <!-- Displaying existing contacts -->
+    <h2>Contacts</h2>
+    <button id="showContactsBtn">Show Contacts</button>
+    <ul id="contactList" style="display: none;">
+        <!-- Contacts will be dynamically added here -->
+    </ul>
+
+    <form action="/logout" method="post">
+        <button type="submit">Logout</button>
+    </form>
+
+    <!-- Script for interacting with the API -->
+    <script>
+        const form = document.getElementById('addContactForm');
+        const contactList = document.getElementById('contactList');
+        const showContactsBtn = document.getElementById('showContactsBtn');
+
+        form?.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(form);
+            const response = await fetch('/contacts', {
+                method: 'POST',
+                body: JSON.stringify(Object.fromEntries(formData)),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+            alert(result.message);
+
+            if (response.ok) {
+                // If successful, reload the contact list
+                loadContacts();
+            }
+        });
+
+        showContactsBtn.addEventListener('click', async function() {
+            if (contactList.style.display === 'none') {
+                loadContacts();
+                contactList.style.display = 'block';
+            } else {
+                contactList.style.display = 'none';
+            }
+        });
+
+        async function loadContacts() {
+            const response = await fetch('/contacts');
+            const contacts = await response.json();
+
+            contactList.innerHTML = '';
+            contacts.forEach(contact => {
+                const li = document.createElement('li');
+                li.textContent = `${contact.first_name} ${contact.last_name} - ${contact.phone_number}`;
+
+                {% if role == 'admin' %}
+                // Add update and delete buttons for each contact for admin
+                const updateBtn = document.createElement('button');
+                updateBtn.textContent = 'Update';
+                updateBtn.addEventListener('click', async () => {
+                    const updatedFirstName = prompt('Enter updated first name (leave blank to keep current):', contact.first_name);
+                    const updatedLastName = prompt('Enter updated last name (leave blank to keep current):', contact.last_name);
+                    const updatedPhoneNumber = prompt('Enter updated phone number (leave blank to keep current):', contact.phone_number);
+
+                    const updatedData = {
+                        first_name: updatedFirstName || contact.first_name,
+                        last_name: updatedLastName || contact.last_name,
+                        phone_number: updatedPhoneNumber || contact.phone_number
+                    };
+
+                    const updateResponse = await fetch(`/contacts/${contact._id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(updatedData),
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const updateResult = await updateResponse.json();
+                    alert(updateResult.message);
+
+                    if (updateResponse.ok) {
+                        loadContacts();
+                    }
+                });
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.addEventListener('click', async () => {
+                    const confirmDelete = confirm(`Are you sure you want to delete ${contact.first_name} ${contact.last_name}?`);
+                    if (confirmDelete) {
+                        const deleteResponse = await fetch(`/contacts/${contact._id}`, {
+                            method: 'DELETE'
+                        });
+
+                        const deleteResult = await deleteResponse.json();
+                        alert(deleteResult.message);
+
+                        if (deleteResponse.ok) {
+                            loadContacts();
+                        }
+                    }
+                });
+
+                li.appendChild(updateBtn);
+                li.appendChild(deleteBtn);
+                {% endif %}
+                contactList.appendChild(li);
+            });
+        }
+
+        // Load contacts initially if admin
+        {% if role == 'admin' %}
+        loadContacts();
+        {% endif %}
+    </script>
+</body>
+</html>
